@@ -256,9 +256,12 @@ Result RnpKeys::removeSecret(const QString &collectionName,
             return Result(Result::DatabaseError,
                           QStringLiteral("cannot delete key %1.").arg(secretName));
         }
+    } else if (!key.fingerprints().contains(secretName)) {
+        return Result(Result::InvalidSecretError,
+                      QStringLiteral("no subkey %1 in collection %2.")
+                      .arg(secretName, collectionName));
     } else {
-        Rnp::Key sub = key.fingerprints().contains(secretName)
-            ? m_rnp->publicKeyring().fromFingerprint(secretName) : Rnp::Key();
+        Rnp::Key sub = m_rnp->publicKeyring().fromFingerprint(secretName);
         if (!m_rnp->publicKeyring().remove(sub)) {
             return Result(Result::DatabaseError,
                           QStringLiteral("cannot delete subkey %1.").arg(secretName));

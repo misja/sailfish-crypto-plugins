@@ -341,7 +341,7 @@ void tst_Rnp::removeKey()
     QCOMPARE(names, QStringList() << QStringLiteral("import"));
 }
 
-// A subkey of another key is not removed through a collection.
+// A subkey of another key is not found in a collection and not removed.
 void tst_Rnp::removeOtherSubkey()
 {
     QString id;
@@ -357,7 +357,8 @@ void tst_Rnp::removeOtherSubkey()
     QCOMPARE(plugin.importAndStoreKey(data, Crypto::Key(), QByteArray(), QVariantMap(),
                                       &key).code(),
              Crypto::Result::Succeeded);
-    plugin.removeSecret(id, other.at(1));
+    const Secrets::Result result = plugin.removeSecret(id, other.at(1));
+    QCOMPARE(result.errorCode(), Secrets::Result::InvalidSecretError);
     QStringList secrets;
     QCOMPARE(plugin.secretNames(otherId, &secrets).code(), Secrets::Result::Succeeded);
     QCOMPARE(secrets, other);
