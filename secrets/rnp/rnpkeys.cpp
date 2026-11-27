@@ -192,7 +192,8 @@ Result RnpKeys::findSecrets(const QString &collectionName,
         Rnp::Key primary = m_rnp->publicKeyring().key(id);
         for (const QString &fp : primary.fingerprints()) {
             const bool isPrimary = fp == primary.fingerprint();
-            const Rnp::Key subkey = isPrimary ? Rnp::Key() : primary.subkey(fp);
+            const Rnp::Key subkey = isPrimary
+                ? Rnp::Key() : m_rnp->publicKeyring().fromFingerprint(fp);
             const Rnp::Key &rkey = isPrimary ? primary : subkey;
             Sailfish::Crypto::Key key = rkey.toCryptoKey(name());
             const bool secret = rkey.hasSecret();
@@ -256,7 +257,8 @@ Result RnpKeys::removeSecret(const QString &collectionName,
                           QStringLiteral("cannot delete key %1.").arg(secretName));
         }
     } else {
-        Rnp::Key sub = key.subkey(secretName);
+        Rnp::Key sub = key.fingerprints().contains(secretName)
+            ? m_rnp->publicKeyring().fromFingerprint(secretName) : Rnp::Key();
         if (!m_rnp->publicKeyring().remove(sub)) {
             return Result(Result::DatabaseError,
                           QStringLiteral("cannot delete subkey %1.").arg(secretName));

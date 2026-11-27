@@ -31,7 +31,6 @@ class Q_DECL_EXPORT Rnp
     public:
         Key();
         Key(const Rnp *rnp, const char *key, const QString &value);
-        Key(const Key &key, size_t isub);
         Key(const Key &) = delete;
         Key(Key &&other);
         Key& operator=(const Key &) = delete;
@@ -47,11 +46,9 @@ class Q_DECL_EXPORT Rnp
         QString keyid() const;
         QString fingerprint() const;
         QStringList fingerprints() const;
-        Key subkey(const QString &fp) const;
         bool remove();
         Sailfish::Crypto::Key toCryptoKey(const QString &pluginName) const;
     private:
-        rnp_ffi_t m_ffi = nullptr;
         rnp_key_handle_t m_key = nullptr;
         rnp_key_handle_t m_primary = nullptr;
     };

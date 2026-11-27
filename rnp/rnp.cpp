@@ -525,7 +525,6 @@ Rnp::Key::Key()
 Rnp::Key::Key(const Rnp *rnp, const char *key, const QString &value)
 {
     qCDebug(lcRnp) << "loading key" << key << value;
-    m_ffi = rnp->m_ffi;
     rnp_result_t res;
     if ((res = rnp_locate_key(rnp->m_ffi, key, value.toLatin1().data(), &m_key)) != RNP_SUCCESS) {
         qCWarning(lcRnp) << "key not available." << res;
@@ -540,23 +539,8 @@ Rnp::Key::Key(const Rnp *rnp, const char *key, const QString &value)
     }
 }
 
-Rnp::Key::Key(const Rnp::Key &key, size_t isub)
-{
-    qCDebug(lcRnp) << "loading subkey" << isub;
-    m_ffi = key.m_ffi;
-    if (key.m_primary) {
-        rnp_key_get_subkey_at(key.m_primary, isub, &m_key);
-        char *fp = nullptr;
-        if (rnp_key_get_fprint(key.m_primary, &fp) == RNP_SUCCESS) {
-            rnp_locate_key(m_ffi, "fingerprint", fp, &m_primary);
-            rnp_buffer_destroy(fp);
-        }
-    }
-}
-
 Rnp::Key::Key(Rnp::Key &&other)
 {
-    m_ffi = other.m_ffi;
     m_key = other.m_key;
     m_primary = other.m_primary;
     other.m_key = nullptr;
@@ -566,7 +550,6 @@ Rnp::Key::Key(Rnp::Key &&other)
 Rnp::Key& Rnp::Key::operator=(Rnp::Key &&other)
 {
     // other releases the handles this key held.
-    std::swap(m_ffi, other.m_ffi);
     std::swap(m_key, other.m_key);
     std::swap(m_primary, other.m_primary);
     return *this;
@@ -637,19 +620,6 @@ QStringList Rnp::Key::fingerprints() const
         }
     }
     return fps;
-}
-
-Rnp::Key Rnp::Key::subkey(const QString &fp) const
-{
-    size_t n = 0;
-    if (m_key && rnp_key_get_subkey_count(m_key, &n) == RNP_SUCCESS) {
-        for (size_t i = 0; i < n; i++) {
-            Key sub = Key(*this, i);
-            if (sub.fingerprint() == fp)
-                return sub;
-        }
-    }
-    return Key();
 }
 
 bool Rnp::Key::remove()
@@ -917,8 +887,10 @@ Rnp::Key Rnp::Keyring::key(const Sailfish::Crypto::Key &key)
     Key k(m_rnp, "keyid", key.collectionName().toUpper());
     if (k.fingerprint() == key.name().toUpper())
         return k;
+    else if (k.fingerprints().contains(key.name().toUpper()))
+        return fromFingerprint(key.name().toUpper());
     else
-        return k.subkey(key.name().toUpper());
+        return Key();
 }
 
 Rnp::Key Rnp::Keyring::fromFingerprint(const QString &fp)

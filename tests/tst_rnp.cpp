@@ -86,6 +86,7 @@ private slots:
     void gnupgHome();
     void subkeyReference();
     void removeKey();
+    void removeOtherSubkey();
     void decryptSigned_data();
     void decryptSigned();
     void verifySubkeySignature();
@@ -338,6 +339,28 @@ void tst_Rnp::removeKey()
     QStringList names;
     QCOMPARE(plugin.collectionNames(&names).code(), Secrets::Result::Succeeded);
     QCOMPARE(names, QStringList() << QStringLiteral("import"));
+}
+
+// A subkey of another key is not removed through a collection.
+void tst_Rnp::removeOtherSubkey()
+{
+    QString id;
+    QStringList fingerprints;
+    QVERIFY(generateKey(&id, &fingerprints));
+    QString otherId;
+    QStringList other;
+    const QByteArray data = exportedKey(RNP_KEY_EXPORT_PUBLIC, &otherId, &other);
+    QVERIFY(!data.isEmpty());
+
+    Plugin plugin;
+    Crypto::Key key;
+    QCOMPARE(plugin.importAndStoreKey(data, Crypto::Key(), QByteArray(), QVariantMap(),
+                                      &key).code(),
+             Crypto::Result::Succeeded);
+    plugin.removeSecret(id, other.at(1));
+    QStringList secrets;
+    QCOMPARE(plugin.secretNames(otherId, &secrets).code(), Secrets::Result::Succeeded);
+    QCOMPARE(secrets, other);
 }
 
 void tst_Rnp::decryptSigned_data()
@@ -606,7 +629,7 @@ void tst_Rnp::keyringSaved()
     void (*handler)(int) = signal(SIGXFSZ, SIG_IGN);
     {
         Rnp rnp(Rnp::RNP_NATIVE);
-        Rnp::Key sub = rnp.publicKeyring().key(id).subkey(fingerprints.at(1));
+        Rnp::Key sub = rnp.publicKeyring().fromFingerprint(fingerprints.at(1));
         QVERIFY(rnp.publicKeyring().remove(sub));
         if (created)
             QVERIFY(QFile::remove(path));
